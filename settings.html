@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Arambh — Settings</title>
+  <meta name="description" content="Configure your Arambh dashboard — manage subjects, budget, quick links, appearance, and data." />
+  <link rel="icon" type="image/png" href="favicon.png" />
+  <link rel="apple-touch-icon" href="favicon.png" />
+  <link rel="stylesheet" href="css/main.css" />
+  <style>
+    .settings-layout {
+      display: grid;
+      grid-template-columns: 200px 1fr;
+      gap: 24px;
+      align-items: start;
+    }
+
+    .settings-nav {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      position: sticky;
+      top: calc(var(--topbar-height) + 24px);
+    }
+
+    .settings-nav-link {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 16px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: var(--transition);
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .settings-nav-link:last-child { border-bottom: none; }
+    .settings-nav-link:hover { background: var(--bg-card-hover); color: var(--text-primary); }
+    .settings-nav-link.active { background: rgba(124,111,255,0.1); color: var(--accent); }
+
+    .settings-section {
+      display: none;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .settings-section.active { display: flex; }
+
+    .setting-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .setting-row:last-child { border-bottom: none; }
+    .setting-label { font-size: 14px; font-weight: 500; }
+    .setting-sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+
+    .link-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px;
+      background: var(--bg-input);
+      border-radius: var(--radius-md);
+      margin-bottom: 8px;
+    }
+
+    .link-icon-input { width: 40px; font-size: 20px; text-align: center; background: none; border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); padding: 4px; }
+    .link-name-input { flex: 1; }
+    .link-url-input { flex: 2; }
+
+    .toggle-switch {
+      position: relative;
+      width: 44px;
+      height: 24px;
+      flex-shrink: 0;
+    }
+
+    .toggle-switch input { opacity: 0; width: 0; height: 0; }
+
+    .toggle-track {
+      position: absolute;
+      inset: 0;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .toggle-thumb {
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 16px;
+      height: 16px;
+      background: var(--text-muted);
+      border-radius: 50%;
+      transition: var(--transition);
+    }
+
+    input:checked + .toggle-track { background: var(--accent); border-color: var(--accent); }
+    input:checked + .toggle-track .toggle-thumb { transform: translateX(20px); background: white; }
+
+    .accent-swatches {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .accent-swatch {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      cursor: pointer;
+      border: 3px solid transparent;
+      transition: var(--transition);
+    }
+
+    .accent-swatch.selected { border-color: var(--text-primary); transform: scale(1.1); }
+
+    @media (max-width: 768px) { .settings-layout { grid-template-columns: 1fr; } .settings-nav { position: static; display: flex; overflow-x: auto; } .settings-nav-link { white-space: nowrap; border-bottom: none; border-right: 1px solid var(--border-subtle); } }
+  </style>
+</head>
+<body>
+  <div class="app-layout">
+    <div id="sidebar-container"></div>
+    <div class="main-content">
+      <div id="topbar-container"></div>
+      <main class="page-body">
+        <h1 class="section-title mb-6">⚙️ Settings</h1>
+        <div class="settings-layout">
+          <!-- Settings Nav -->
+          <div class="settings-nav" id="settingsNav">
+            <div class="settings-nav-link active" data-section="study">📚 Study</div>
+            <div class="settings-nav-link" data-section="money">💰 Money</div>
+            <div class="settings-nav-link" data-section="links">⚡ Quick Links</div>
+            <div class="settings-nav-link" data-section="appearance">🎨 Appearance</div>
+            <div class="settings-nav-link" data-section="data">💾 Data</div>
+          </div>
+
+          <!-- Settings Content -->
+          <div style="display:flex;flex-direction:column;gap:0">
+            <!-- Study Settings -->
+            <div class="settings-section active card" id="section-study">
+              <div class="card-title">📚 Study Settings</div>
+              <div>
+                <div class="flex justify-between items-center mb-3">
+                  <span style="font-size:14px;font-weight:600">Subjects <span style="color:var(--text-muted);font-weight:400" id="subjectCountLabel"></span></span>
+                  <button class="btn btn-secondary btn-sm" id="settingsAddSubjectBtn">+ Add Subject</button>
+                </div>
+                <div id="settingsSubjectsList"></div>
+              </div>
+              <div class="divider"></div>
+              <button class="btn btn-danger btn-sm" id="resetStudyBtn" style="width:fit-content">🗑️ Reset All Study Data</button>
+            </div>
+
+            <!-- Money Settings -->
+            <div class="settings-section card" id="section-money">
+              <div class="card-title">💰 Money Settings</div>
+              <div class="setting-row">
+                <div>
+                  <div class="setting-label">Default Monthly Budget</div>
+                  <div class="setting-sub">Set the default budget for all months</div>
+                </div>
+                <div class="flex gap-2 items-center">
+                  <span style="font-size:16px;color:var(--text-secondary)">₹</span>
+                  <input type="number" class="form-input" id="settingsBudgetInput" style="width:120px" />
+                  <button class="btn btn-primary btn-sm" id="settingsBudgetSave">Save</button>
+                </div>
+              </div>
+              <div class="divider"></div>
+              <button class="btn btn-danger btn-sm" id="resetMoneyBtn" style="width:fit-content">🗑️ Reset All Money Data</button>
+            </div>
+
+            <!-- Quick Links Settings -->
+            <div class="settings-section card" id="section-links">
+              <div class="card-title">⚡ Quick Links Manager</div>
+              <div id="quickLinksList"></div>
+              <button class="btn btn-secondary btn-sm" id="addQuickLinkBtn" style="width:fit-content">+ Add Link</button>
+              <button class="btn btn-primary btn-sm" id="saveQuickLinksBtn" style="width:fit-content">💾 Save Links</button>
+            </div>
+
+            <!-- Appearance Settings -->
+            <div class="settings-section card" id="section-appearance">
+              <div class="card-title">🎨 Appearance</div>
+              <div class="setting-row">
+                <div>
+                  <div class="setting-label">Dark Mode</div>
+                  <div class="setting-sub">Switch between dark and light theme</div>
+                </div>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="themeCheckbox" />
+                  <div class="toggle-track"><div class="toggle-thumb"></div></div>
+                </label>
+              </div>
+              <div class="setting-row" style="flex-direction:column;align-items:flex-start;gap:12px">
+                <div>
+                  <div class="setting-label">Accent Color</div>
+                  <div class="setting-sub">Pick a primary accent color for the dashboard</div>
+                </div>
+                <div class="accent-swatches" id="accentSwatches"></div>
+                <div class="flex gap-3 items-center">
+                  <label class="form-label">Custom:</label>
+                  <input type="color" id="customAccentInput" class="form-input" style="width:48px;height:36px;padding:2px;cursor:pointer" />
+                  <button class="btn btn-secondary btn-sm" id="applyCustomAccent">Apply</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Data Settings -->
+            <div class="settings-section card" id="section-data">
+              <div class="card-title">💾 Data Management</div>
+              <div class="setting-row">
+                <div>
+                  <div class="setting-label">Export Data</div>
+                  <div class="setting-sub">Download all your data as a JSON backup</div>
+                </div>
+                <button class="btn btn-secondary btn-sm" id="exportDataBtn">⬇️ Export JSON</button>
+              </div>
+              <div class="setting-row">
+                <div>
+                  <div class="setting-label">Import Data</div>
+                  <div class="setting-sub">Restore from a previously exported JSON file</div>
+                </div>
+                <div class="flex gap-2">
+                  <input type="file" id="importFileInput" accept=".json" style="display:none" />
+                  <button class="btn btn-secondary btn-sm" id="importDataBtn">⬆️ Import JSON</button>
+                </div>
+              </div>
+              <div class="divider"></div>
+              <div class="setting-row">
+                <div>
+                  <div class="setting-label" style="color:var(--red)">Clear All Data</div>
+                  <div class="setting-sub">Permanently delete everything and start fresh</div>
+                </div>
+                <button class="btn btn-danger btn-sm" id="clearAllBtn">⚠️ Clear All</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script src="js/store.js"></script>
+  <script src="js/components.js"></script>
+  <script src="js/settings.js"></script>
+</body>
+</html>

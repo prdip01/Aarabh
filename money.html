@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Arambh — Money Goal</title>
+  <meta name="description" content="Track your monthly budget, log expenses, and view spending breakdowns." />
+  <link rel="icon" type="image/png" href="favicon.png" />
+  <link rel="apple-touch-icon" href="favicon.png" />
+  <link rel="stylesheet" href="css/main.css" />
+  <style>
+    .money-layout {
+      display: grid;
+      grid-template-columns: 340px 1fr;
+      gap: 24px;
+      align-items: start;
+    }
+
+    .donut-center {
+      position: absolute;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      pointer-events: none;
+    }
+
+    .donut-amount {
+      font-size: 22px;
+      font-weight: 800;
+      line-height: 1.1;
+    }
+
+    .donut-label {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .summary-stat {
+      text-align: center;
+      padding: 16px;
+      background: var(--bg-input);
+      border-radius: var(--radius-md);
+    }
+
+    .summary-stat-val {
+      font-size: 20px;
+      font-weight: 800;
+      line-height: 1.1;
+    }
+
+    .summary-stat-label {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    .cat-bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+    .cat-bar-icon { font-size: 16px; width: 24px; text-align: center; }
+    .cat-bar-label { font-size: 12px; color: var(--text-secondary); width: 90px; flex-shrink: 0; }
+    .cat-bar-bg { flex: 1; height: 8px; background: var(--bg-input); border-radius: 4px; overflow: hidden; }
+    .cat-bar-fill { height: 100%; border-radius: 4px; transition: width 1s ease; }
+    .cat-bar-val { font-size: 12px; color: var(--text-muted); width: 60px; text-align: right; }
+
+    @media (max-width: 900px) { .money-layout { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <div class="app-layout">
+    <div id="sidebar-container"></div>
+    <div class="main-content">
+      <div id="topbar-container"></div>
+      <main class="page-body">
+        <h1 class="section-title mb-6">💰 Money Goal</h1>
+
+        <div class="money-layout">
+          <!-- Left Panel -->
+          <div style="display:flex;flex-direction:column;gap:20px">
+            <!-- Budget Ring -->
+            <div class="card text-center">
+              <div class="card-title">Budget Overview</div>
+              <div style="display:flex;align-items:center;justify-content:center;margin:8px 0 16px">
+                <div class="ring-container" id="mainRingContainer">
+                  <!-- Rendered by JS -->
+                </div>
+              </div>
+              <div class="flex gap-2">
+                <div class="summary-stat" style="flex:1">
+                  <div class="summary-stat-val text-red" id="statSpent">₹0</div>
+                  <div class="summary-stat-label">Spent</div>
+                </div>
+                <div class="summary-stat" style="flex:1">
+                  <div class="summary-stat-val text-green" id="statRemaining">₹0</div>
+                  <div class="summary-stat-label">Remaining</div>
+                </div>
+              </div>
+
+              <!-- Budget Edit -->
+              <div class="divider"></div>
+              <div class="flex gap-2 items-center">
+                <input type="number" class="form-input" id="budgetInput" placeholder="Set budget..." style="flex:1" />
+                <button class="btn btn-primary btn-sm" id="setBudgetBtn">Set</button>
+              </div>
+            </div>
+
+            <!-- Add Expense -->
+            <div class="card">
+              <div class="card-title">➕ Add Expense</div>
+              <div class="modal-form">
+                <div class="form-group">
+                  <label class="form-label">Amount (₹)</label>
+                  <input type="number" class="form-input" id="expAmount" placeholder="0.00" min="0" step="0.01" />
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Date</label>
+                  <input type="date" class="form-input" id="expDate" />
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Category</label>
+                  <select class="form-input" id="expCategory">
+                    <option value="Online Payment">💳 Online Payment</option>
+                    <option value="Education">📚 Education</option>
+                    <option value="Shopping">🛍️ Shopping</option>
+                    <option value="Travel">✈️ Travel</option>
+                    <option value="Food">🍽️ Food</option>
+                    <option value="Others">📦 Others</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Note (optional)</label>
+                  <input type="text" class="form-input" id="expNote" placeholder="What was this for?" />
+                </div>
+                <button class="btn btn-primary w-full" id="addExpenseBtn">+ Add Expense</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right Panel -->
+          <div style="display:flex;flex-direction:column;gap:20px">
+            <!-- Summary Cards -->
+            <div class="grid-4" id="moneySummaryCards"></div>
+
+            <!-- Category Breakdown -->
+            <div class="card">
+              <div class="card-title">📊 Spending by Category</div>
+              <div id="categoryChart"></div>
+            </div>
+
+            <!-- Transaction History -->
+            <div class="card">
+              <div class="flex justify-between items-center mb-4">
+                <div class="card-title" style="margin:0">📋 Transactions</div>
+                <div class="flex gap-2 items-center">
+                  <input type="month" class="form-input" id="monthFilter" style="padding:6px 10px;font-size:12px" />
+                </div>
+              </div>
+              <div class="table-wrapper">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      <th>Category</th>
+                      <th>Note</th>
+                      <th>Amount</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="expensesTable"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script src="js/store.js"></script>
+  <script src="js/components.js"></script>
+  <script src="js/money.js"></script>
+</body>
+</html>

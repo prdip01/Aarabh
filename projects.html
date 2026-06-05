@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Arambh — Projects</title>
+  <meta name="description" content="Track your projects, monitor progress, and manage links to deployed apps and repositories." />
+  <link rel="icon" type="image/png" href="favicon.png" />
+  <link rel="apple-touch-icon" href="favicon.png" />
+  <link rel="stylesheet" href="css/main.css" />
+  <style>
+    .projects-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
+
+    .project-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      transition: var(--transition);
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .project-card:hover {
+      border-color: var(--border);
+      box-shadow: var(--shadow-md);
+      transform: translateY(-2px);
+    }
+
+    .project-card-header {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+    }
+
+    .project-ring { flex-shrink: 0; }
+
+    .project-name {
+      font-size: 16px;
+      font-weight: 700;
+      line-height: 1.3;
+      flex: 1;
+    }
+
+    .project-desc {
+      font-size: 12px;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    .project-progress-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .progress-track {
+      flex: 1;
+      height: 6px;
+      background: var(--bg-input);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      border-radius: 3px;
+      transition: width 1s ease;
+    }
+
+    .progress-label {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text-secondary);
+      width: 32px;
+      text-align: right;
+    }
+
+    .project-links {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .project-link-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 5px 12px;
+      border-radius: var(--radius-sm);
+      font-size: 12px;
+      font-weight: 500;
+      background: var(--bg-input);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-secondary);
+      text-decoration: none;
+      transition: var(--transition);
+    }
+
+    .project-link-btn:hover {
+      border-color: var(--border);
+      color: var(--accent);
+      background: var(--accent-glow);
+    }
+
+    .project-actions {
+      display: flex;
+      gap: 6px;
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      opacity: 0;
+      transition: var(--transition);
+    }
+
+    .project-card:hover .project-actions { opacity: 1; }
+
+    .project-status-cycle {
+      cursor: pointer;
+    }
+
+    .projects-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 16px;
+    }
+
+    .progress-input-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .progress-slider {
+      flex: 1;
+      accent-color: var(--accent);
+      height: 4px;
+      cursor: pointer;
+    }
+
+    .status-not-started { background: var(--bg-input); color: var(--text-muted); }
+    .status-in-progress { background: var(--blue-bg); color: var(--blue); }
+    .status-completed { background: var(--green-bg); color: var(--green); }
+  </style>
+</head>
+<body>
+  <div class="app-layout">
+    <div id="sidebar-container"></div>
+    <div class="main-content">
+      <div id="topbar-container"></div>
+      <main class="page-body">
+        <div class="projects-toolbar">
+          <h1 class="section-title" style="margin:0">🚀 Project Goal</h1>
+          <div class="flex gap-3 items-center flex-wrap">
+            <div class="tabs" id="projectFilterTabs">
+              <button class="tab-btn active" data-filter="all">All</button>
+              <button class="tab-btn" data-filter="In Progress">In Progress</button>
+              <button class="tab-btn" data-filter="Completed">Completed</button>
+              <button class="tab-btn" data-filter="Not Started">Not Started</button>
+            </div>
+            <button class="btn btn-primary" id="addProjectBtn">+ New Project</button>
+          </div>
+        </div>
+
+        <!-- Summary Bar -->
+        <div class="grid-4 mb-6" id="projectSummary"></div>
+
+        <!-- Projects Grid -->
+        <div class="projects-grid" id="projectsGrid"></div>
+      </main>
+    </div>
+  </div>
+
+  <!-- Add/Edit Project Modal -->
+  <div class="modal-overlay" id="projectModal">
+    <div class="modal" style="max-width:520px">
+      <div class="modal-header">
+        <h2 class="modal-title" id="projectModalTitle">New Project</h2>
+        <button class="modal-close" onclick="closeModal('projectModal')">✕</button>
+      </div>
+      <div class="modal-form">
+        <input type="hidden" id="editProjectId" />
+        <div class="form-group">
+          <label class="form-label">Project Name *</label>
+          <input type="text" class="form-input" id="projName" placeholder="My Awesome Project" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Description (optional)</label>
+          <textarea class="form-input" id="projDesc" rows="2" placeholder="What is this project about?"></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Status</label>
+          <select class="form-input" id="projStatus">
+            <option value="Not Started">⏳ Not Started</option>
+            <option value="In Progress">🔄 In Progress</option>
+            <option value="Completed">✅ Completed</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Progress: <span id="progressDisplay">0%</span></label>
+          <input type="range" class="progress-slider w-full" id="projProgress" min="0" max="100" step="5" value="0"
+            oninput="document.getElementById('progressDisplay').textContent = this.value + '%'" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">🌐 Deploy / Live Link</label>
+          <input type="url" class="form-input" id="projDeployLink" placeholder="https://myproject.vercel.app" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">🐙 GitHub Repository</label>
+          <input type="url" class="form-input" id="projGithubLink" placeholder="https://github.com/user/repo" />
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closeModal('projectModal')">Cancel</button>
+        <button class="btn btn-primary" id="saveProjectBtn">Save Project</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/store.js"></script>
+  <script src="js/components.js"></script>
+  <script src="js/projects.js"></script>
+</body>
+</html>

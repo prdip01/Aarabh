@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Arambh — Study Goal</title>
+  <meta name="description" content="Track your daily study sessions, view 30-day history, and analyze your learning progress." />
+  <link rel="icon" type="image/png" href="favicon.png" />
+  <link rel="apple-touch-icon" href="favicon.png" />
+  <link rel="stylesheet" href="css/main.css" />
+  <style>
+    .study-layout {
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      gap: 24px;
+      align-items: start;
+    }
+
+    .subject-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: var(--radius-full);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: var(--transition);
+    }
+
+    .subject-dot { width: 8px; height: 8px; border-radius: 50%; }
+
+    .heatmap-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, 28px);
+      gap: 4px;
+    }
+
+    .heat-cell {
+      width: 28px;
+      height: 28px;
+      border-radius: 5px;
+      background: var(--bg-input);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      color: var(--text-muted);
+      cursor: default;
+      transition: var(--transition);
+      position: relative;
+    }
+
+    .heat-cell:hover { transform: scale(1.15); z-index: 1; }
+    .heat-cell[data-hrs="0"] { background: var(--bg-input); }
+    .heat-cell.studied { color: white; }
+    .heat-cell.missed { background: var(--red-bg); border: 1px solid rgba(239,68,68,0.2); color: var(--red); }
+
+    .session-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+    .session-item:last-child { border-bottom: none; }
+
+    .session-subject-badge {
+      padding: 4px 10px;
+      border-radius: var(--radius-full);
+      font-size: 11px;
+      font-weight: 600;
+      color: white;
+      flex-shrink: 0;
+    }
+
+    .chart-bar-wrap { display: flex; flex-direction: column; gap: 8px; }
+    .chart-bar-row { display: flex; align-items: center; gap: 10px; }
+    .chart-bar-label { font-size: 12px; color: var(--text-secondary); width: 80px; flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .chart-bar-bg { flex: 1; height: 12px; background: var(--bg-input); border-radius: 6px; overflow: hidden; }
+    .chart-bar-fill { height: 100%; border-radius: 6px; transition: width 1s ease; }
+    .chart-bar-val { font-size: 12px; color: var(--text-muted); width: 36px; text-align: right; flex-shrink: 0; }
+
+    @media (max-width: 900px) { .study-layout { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <div class="app-layout">
+    <div id="sidebar-container"></div>
+    <div class="main-content">
+      <div id="topbar-container"></div>
+      <main class="page-body">
+        <div class="flex justify-between items-center mb-6">
+          <h1 class="section-title" style="margin:0">📚 Study Goal</h1>
+          <button class="btn btn-primary" id="exportPdfBtn">📄 Export PDF</button>
+        </div>
+
+        <div class="study-layout">
+          <!-- Left Panel -->
+          <div style="display:flex;flex-direction:column;gap:20px">
+            <!-- Log Session -->
+            <div class="card">
+              <div class="card-title">📝 Log Study Session</div>
+              <div class="modal-form" id="studyLogForm">
+                <div class="form-group">
+                  <label class="form-label">Date</label>
+                  <input type="date" class="form-input" id="logDate" />
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Subject</label>
+                  <select class="form-input" id="logSubject"></select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Hours Studied</label>
+                  <input type="number" class="form-input" id="logHours" placeholder="e.g. 2.5" min="0.25" max="16" step="0.25" />
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Topics Covered</label>
+                  <input type="text" class="form-input" id="logTopics" placeholder="e.g. Chapter 5, Algebra..." />
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Notes (optional)</label>
+                  <textarea class="form-input" id="logNotes" rows="2" placeholder="Any notes or observations..."></textarea>
+                </div>
+                <button class="btn btn-primary w-full" id="saveSessionBtn">+ Save Session</button>
+              </div>
+            </div>
+
+            <!-- Subject Config -->
+            <div class="card">
+              <div class="flex justify-between items-center mb-4">
+                <div class="card-title" style="margin:0">🎨 Subjects</div>
+                <button class="btn btn-secondary btn-sm" id="addSubjectBtn">+ Add</button>
+              </div>
+              <div id="subjectsList"></div>
+            </div>
+          </div>
+
+          <!-- Right Panel -->
+          <div style="display:flex;flex-direction:column;gap:20px">
+            <!-- Analytics Row -->
+            <div class="grid-2">
+              <div class="card">
+                <div class="card-title">📊 Hours by Subject</div>
+                <div id="subjectBarChart" class="chart-bar-wrap"></div>
+              </div>
+              <div class="card">
+                <div class="card-title">📅 Weekly Trend</div>
+                <canvas id="weeklyChart" height="140"></canvas>
+              </div>
+            </div>
+
+            <!-- 30-Day Heatmap -->
+            <div class="card">
+              <div class="flex justify-between items-center mb-4">
+                <div class="card-title" style="margin:0">🗓️ 30-Day History</div>
+                <div class="flex gap-2" id="heatmapFilters"></div>
+              </div>
+              <div class="heatmap-grid" id="heatmapGrid"></div>
+              <div class="flex gap-4 mt-4" style="font-size:12px;color:var(--text-muted)">
+                <span>⬜ No data &nbsp; 🟩 Studied &nbsp; 🟥 Missed</span>
+              </div>
+            </div>
+
+            <!-- Session History -->
+            <div class="card">
+              <div class="card-title">📋 Recent Sessions</div>
+              <div id="sessionsList"></div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script src="js/store.js"></script>
+  <script src="js/components.js"></script>
+  <script src="js/study.js"></script>
+</body>
+</html>
